@@ -2,6 +2,7 @@ export interface User {
   id: string;
   username: string;
   room: string;
+  uid?: string;
 }
 
 export interface Message {
@@ -10,6 +11,7 @@ export interface Message {
   username: string;
   timestamp: Date;
   room: string;
+  uid?: string;
 }
 
 export interface ServerToClientEvents {
@@ -21,7 +23,7 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  sendMessage: (message: { text: string; username: string; room: string }) => void;
-  joinRoom: (data: { username: string; room: string }) => void;
+  sendMessage: (message: { text: string; username: string; room: string; uid?: string | null }) => void;
+  joinRoom: (data: { username: string; room: string; uid?: string | null }) => void;
   leaveRoom: () => void;
 }

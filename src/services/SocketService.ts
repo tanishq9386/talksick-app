@@ -12,7 +12,7 @@ class SocketService {
   private currentUsername: string | null = null;
   private connectionInterval: ReturnType<typeof setInterval> | null = null;
 
-  // Event listeners
+  // Event listeners arrays
   private messageListeners: ((message: Message) => void)[] = [];
   private userJoinedListeners: ((user: User) => void)[] = [];
   private userLeftListeners: ((user: User) => void)[] = [];
@@ -111,12 +111,10 @@ class SocketService {
   }
 
   private startConnectionMonitoring(): void {
-    // Clean up existing interval
     if (this.connectionInterval) {
       clearInterval(this.connectionInterval);
     }
 
-    // Monitor connection state every 5 seconds
     this.connectionInterval = setInterval(() => {
       if (this.socket?.connected) {
         this.notifyConnectionListeners(true);
@@ -131,8 +129,8 @@ class SocketService {
     }
   }
 
-  // Room methods
-  joinRoom(roomId: string, username?: string): void {
+  // Room methods with UID support
+  joinRoom(roomId: string, username?: string, uid?: string): void {
     if (!this.socket?.connected) {
       this.logError('Cannot join room - socket not connected');
       return;
@@ -140,9 +138,15 @@ class SocketService {
 
     this.currentRoom = roomId;
     const usernameToUse = username || this.currentUsername;
+    const uidToUse = uid || this.currentUserId;
     
-    this.log('Joining room', { room: roomId, username: usernameToUse });
-    this.socket.emit('joinRoom', { username: usernameToUse!, room: roomId });
+    this.log('Joining room', { room: roomId, username: usernameToUse, uid: uidToUse });
+    
+    this.socket.emit('joinRoom', { 
+      username: usernameToUse!, 
+      room: roomId,
+      uid: uidToUse || undefined // Convert null to undefined
+    });
   }
 
   leaveRoom(): void {
@@ -155,8 +159,8 @@ class SocketService {
     }
   }
 
-  // Message methods
-  sendMessage(text: string, roomId: string): void {
+  // Message methods with UID support
+  sendMessage(text: string, roomId: string, uid?: string): void {
     if (!this.socket?.connected || !this.currentUsername) {
       this.logError('Cannot send message - socket not connected or no username');
       return;
@@ -166,13 +170,14 @@ class SocketService {
       text,
       username: this.currentUsername,
       room: roomId,
+      uid: uid || this.currentUserId || undefined, // Convert null to undefined
     };
 
     this.log('Sending message', { room: roomId, length: text.length });
     this.socket.emit('sendMessage', messageData);
   }
 
-  // Event listener management
+  // Event listener management methods - THESE WERE MISSING
   onMessage(callback: (message: Message) => void): () => void {
     this.messageListeners.push(callback);
     return () => {

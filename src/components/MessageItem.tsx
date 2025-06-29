@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Message } from '../shared/types';
 
 interface MessageItemProps {
@@ -26,7 +26,6 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isOwnMessage }) => {
       {isOwnMessage ? (
         // Own message - blue bubble on right (matching website)
         <View style={styles.ownMessage}>
-          <Text style={styles.ownUsername}>{message.username}</Text>
           <Text style={styles.ownMessageText}>{message.text}</Text>
           <Text style={styles.ownTimestamp}>{formatTime(message.timestamp)}</Text>
         </View>

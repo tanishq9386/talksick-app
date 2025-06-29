@@ -13,14 +13,20 @@ import {
 import { CONFIG } from '../shared/config';
 
 interface LoginScreenProps {
-  // Updated to match website - expects username AND room
-  onLogin: (username: string, room: string) => Promise<void>;
+  onLogin: (username: string, room: string, uid: string) => Promise<void>;
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [room, setRoom] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Generate unique UID - same format as web version
+  const generateUID = (): string => {
+    const timestamp = Date.now();
+    const randomPart = Math.random().toString(36).substring(2, 15);
+    return `user_${timestamp}_${randomPart}`;
+  };
 
   const handleLogin = async (): Promise<void> => {
     if (!username.trim()) {
@@ -69,7 +75,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
     setIsLoading(true);
     try {
-      await onLogin(username.trim(), room.trim().toLowerCase());
+      // Generate unique UID for this session
+      const uid = generateUID();
+      
+      console.log('User attempting login:', { 
+        username: username.trim(), 
+        room: room.trim().toLowerCase(), 
+        uid 
+      });
+      
+      // Pass username, room, and UID to parent component
+      await onLogin(username.trim(), room.trim().toLowerCase(), uid);
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert('Error', 'Failed to connect to chat server. Please try again.');
@@ -153,12 +169,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              🌐 Chat with users on web and mobile
-            </Text>
             <Text style={styles.footerSubtext}>
               Create a new room or join an existing one
             </Text>
+            {CONFIG.DEBUG.enabled && (
+              <Text style={styles.debugText}>
+                Each session gets a unique identifier
+              </Text>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -251,19 +269,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  footerText: {
-    fontSize: 14,
-    color: CONFIG.COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 4,
-  },
   footerSubtext: {
     fontSize: 12,
     color: CONFIG.COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
     opacity: 0.8,
+  },
+  debugText: {
+    fontSize: 10,
+    color: CONFIG.COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   suggestionsContainer: {
     alignItems: 'center',

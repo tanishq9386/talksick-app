@@ -20,7 +20,7 @@ import { CONFIG } from '../shared/config';
 import { Message, User } from '../shared/types';
 
 interface ChatScreenProps {
-  userId: string;
+  userId: string; 
   username: string;
   room: string;
   onLogout: () => void;
@@ -60,7 +60,10 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
   }, []);
 
   useEffect(() => {
-    SocketService.joinRoom(room, username);
+    console.log('ChatScreen mounted with UID:', userId, 'Username:', username, 'Room:', room);
+    
+    // Join room with UID - SocketService should be updated to handle UID
+    SocketService.joinRoom(room, username, userId);
 
     const unsubscribeMessage = SocketService.onMessage((message) => {
       setMessages(prev => {
@@ -100,7 +103,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
       unsubscribeRoomUsers();
       unsubscribeConnection();
     };
-  }, [room, username]);
+  }, [room, username, userId]);
 
   const toggleUserList = () => {
     const toValue = isUserListVisible ? 0 : 1;
@@ -123,7 +126,8 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
       return;
     }
 
-    SocketService.sendMessage(inputText.trim(), room);
+    // Send message with UID for proper ownership tracking
+    SocketService.sendMessage(inputText.trim(), room, userId);
     setInputText('');
   };
 
@@ -146,13 +150,19 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
     );
   };
 
-  const renderMessage = ({ item }: { item: Message }) => (
-    <MessageItem
-      message={item}
-      isOwnMessage={item.username === username}
-      currentUsername={username}
-    />
-  );
+  // Updated to use UID for message ownership
+  const renderMessage = ({ item }: { item: Message }) => {
+    // Use UID if available, fallback to username for backward compatibility
+    const isOwnMessage = item.uid ? item.uid === userId : item.username === username;
+    
+    return (
+      <MessageItem
+        message={item}
+        isOwnMessage={isOwnMessage}
+        currentUsername={username}
+      />
+    );
+  };
 
   const userListWidth = slideAnimation.interpolate({
     inputRange: [0, 1],
@@ -215,7 +225,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
           />
         </View>
 
-        {/* Sliding User List */}
+        {/* Sliding User List - Updated to pass UID */}
         <Animated.View style={[styles.userListContainer, { width: userListWidth }]}>
           <BlurView intensity={60} tint="light" style={styles.userListBlur}>
             <View style={styles.userListHeader}>
@@ -226,6 +236,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </View>
+            {/* Pass UID instead of socket ID */}
             <UserList users={users} currentUserId={userId} />
           </BlurView>
         </Animated.View>
@@ -243,7 +254,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
             styles.inputBlur,
             {
               position: 'absolute',
-              bottom: Platform.OS === 'ios' ? 0 : keyboardHeight,
+              bottom: Platform.OS === 'ios' ? 0 : keyboardHeight - 10,
               left: 0,
               right: 0,
             }
@@ -301,7 +312,9 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
   );
 };
 
+// Keep your existing styles...
 const styles = StyleSheet.create({
+  // ... all your existing styles remain the same
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
