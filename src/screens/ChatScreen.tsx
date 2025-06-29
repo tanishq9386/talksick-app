@@ -38,25 +38,27 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
   const slideAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Keyboard listeners for fine-tuned control
-    const keyboardDidShowListener = Keyboard.addListener(
-      'keyboardDidShow',
-      (event) => {
-        setKeyboardHeight(event.endCoordinates.height);
-      }
-    );
-    
-    const keyboardDidHideListener = Keyboard.addListener(
-      'keyboardDidHide',
-      () => {
-        setKeyboardHeight(0);
-      }
-    );
+    // Keyboard listeners for Android - iOS will be handled by KeyboardAvoidingView
+    if (Platform.OS === 'android') {
+      const keyboardDidShowListener = Keyboard.addListener(
+        'keyboardDidShow',
+        (event) => {
+          setKeyboardHeight(event.endCoordinates.height);
+        }
+      );
+      
+      const keyboardDidHideListener = Keyboard.addListener(
+        'keyboardDidHide',
+        () => {
+          setKeyboardHeight(0);
+        }
+      );
 
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
+      return () => {
+        keyboardDidShowListener.remove();
+        keyboardDidHideListener.remove();
+      };
+    }
   }, []);
 
   useEffect(() => {
@@ -170,7 +172,11 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
   });
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
       {/* Blur Header */}
       <BlurView intensity={CONFIG.UI.blurIntensity} tint="light" style={styles.blurHeader}>
         <View style={styles.headerContent}>
@@ -195,7 +201,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
       </BlurView>
 
       {/* Main Content Area */}
-      <View style={[styles.mainContent, { marginBottom: keyboardHeight > 0 ? 0 : 80 }]}>
+      <View style={styles.mainContent}>
         {/* Chat Area */}
         <View style={styles.chatArea}>
           <FlatList
@@ -204,10 +210,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
             renderItem={renderMessage}
             keyExtractor={(item) => item.id}
             style={styles.messagesList}
-            contentContainerStyle={[
-              styles.messagesContainer,
-              { paddingBottom: keyboardHeight > 0 ? 20 : 100 }
-            ]}
+            contentContainerStyle={styles.messagesContainer}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={() => {
               flatListRef.current?.scrollToEnd({ animated: true });
@@ -242,54 +245,44 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
         </Animated.View>
       </View>
 
-      {/* Input Area - Fixed at bottom with keyboard handling */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'position' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      {/* Input Area - Fixed positioning */}
+      <BlurView 
+        intensity={90} 
+        tint="dark" 
+        style={[
+          styles.inputBlur,
+          Platform.OS === 'android' && { marginBottom: keyboardHeight > 0 ? 0 : 0 }
+        ]}
       >
-        <BlurView 
-          intensity={90} 
-          tint="dark" 
-          style={[
-            styles.inputBlur,
-            {
-              position: 'absolute',
-              bottom: Platform.OS === 'ios' ? 0 : keyboardHeight - 10,
-              left: 0,
-              right: 0,
-            }
-          ]}
-        >
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={[
-                styles.textInput,
-                !isConnected && styles.textInputDisabled
-              ]}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder={isConnected ? "Type your message..." : "Connecting..."}
-              placeholderTextColor="rgba(255,255,255,0.6)"
-              multiline
-              maxLength={CONFIG.CHAT.maxMessageLength}
-              returnKeyType="send"
-              onSubmitEditing={handleSendMessage}
-              blurOnSubmit={false}
-              editable={isConnected}
-            />
-            <TouchableOpacity
-              style={[
-                styles.sendButton,
-                (!inputText.trim() || !isConnected) && styles.sendButtonDisabled
-              ]}
-              onPress={handleSendMessage}
-              disabled={!inputText.trim() || !isConnected}
-            >
-              <Text style={styles.sendIcon}>➤</Text>
-            </TouchableOpacity>
-          </View>
-        </BlurView>
-      </KeyboardAvoidingView>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[
+              styles.textInput,
+              !isConnected && styles.textInputDisabled
+            ]}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder={isConnected ? "Type your message..." : "Connecting..."}
+            placeholderTextColor="rgba(255,255,255,0.6)"
+            multiline
+            maxLength={CONFIG.CHAT.maxMessageLength}
+            returnKeyType="send"
+            onSubmitEditing={handleSendMessage}
+            blurOnSubmit={false}
+            editable={isConnected}
+          />
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              (!inputText.trim() || !isConnected) && styles.sendButtonDisabled
+            ]}
+            onPress={handleSendMessage}
+            disabled={!inputText.trim() || !isConnected}
+          >
+            <Text style={styles.sendIcon}>➤</Text>
+          </TouchableOpacity>
+        </View>
+      </BlurView>
 
       {/* Overlay for when user list is open */}
       {isUserListVisible && (
@@ -308,13 +301,11 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userId, username, room, onLogou
           </Text>
         </View>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
-// Keep your existing styles...
 const styles = StyleSheet.create({
-  // ... all your existing styles remain the same
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
@@ -323,6 +314,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 50 : 20,
     paddingBottom: 16,
     paddingHorizontal: 20,
+    backgroundColor: 'rgba(59, 130, 246, 0.7)',
   },
   headerContent: {
     flexDirection: 'row',
@@ -383,6 +375,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     flexGrow: 1,
+    paddingBottom: 20,
   },
   emptyContainer: {
     flex: 1,
@@ -431,7 +424,6 @@ const styles = StyleSheet.create({
   inputBlur: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    zIndex: 1000,
   },
   inputContainer: {
     flexDirection: 'row',
